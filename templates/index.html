@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashGuard | Mountain Flood Intelligence</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">⚡</div>
+            <div>
+                <h2>FLASHGUARD</h2>
+                <span>Mountain Intelligence</span>
+            </div>
+        </div>
+
+        <nav>
+            <a class="nav-item active"><span>◈</span> Watershed Overview</a>
+        </nav>
+
+        <!-- 4-SOURCE MANUAL CONTROLS -->
+        <div class="sidebar-tool-card">
+            <div class="tool-header">
+                <span>🎛️ MULTISOURCE CALIBRATION</span>
+            </div>
+            <h4>Manual Stress-Test</h4>
+            <p>Adjust parameters to test AI flood prediction:</p>
+
+            <div class="tool-field">
+                <div class="field-title"><span>🌧️ Rain (1h):</span><b id="valRain">0 mm</b></div>
+                <input type="range" id="sliderRain" min="0" max="150" value="0" oninput="onSliderChange('Rain', this.value, ' mm')">
+            </div>
+
+            <div class="tool-field">
+                <div class="field-title"><span>💧 Soil Moisture:</span><b id="valSoil">60 %</b></div>
+                <input type="range" id="sliderSoil" min="10" max="100" value="60" oninput="onSliderChange('Soil', this.value, ' %')">
+            </div>
+
+            <div class="tool-field">
+                <div class="field-title"><span>⛰️ Slope:</span><b id="valSlope">35 °</b></div>
+                <input type="range" id="sliderSlope" min="5" max="60" value="35" oninput="onSliderChange('Slope', this.value, ' °')">
+            </div>
+
+            <div class="tool-field">
+                <div class="field-title"><span>🌊 River Level:</span><b id="valRiver">50 %</b></div>
+                <input type="range" id="sliderRiver" min="10" max="100" value="50" oninput="onSliderChange('River', this.value, ' %')">
+            </div>
+
+            <button class="predict-action-btn" onclick="triggerManualPrediction()">
+                🔮 Recalculate Flood Risk
+            </button>
+        </div>
+
+        <div class="system-status">
+            <div class="status-dot"></div>
+            <div>
+                <strong>System Online</strong>
+                <small>Open-Meteo Multi-API Active</small>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <span>INDIAN MOUNTAIN BASINS</span>
+            <strong>v4.0 • PRODUCTION MVP</strong>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- HEADER -->
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">MULTISOURCE EARLY WARNING SYSTEM</p>
+                <h1>Mountain Flash Flood Intelligence</h1>
+                <p class="subtitle">Real-time AI prediction, live environmental APIs & safety havens across 10 hilly regions of India.</p>
+            </div>
+
+            <div class="header-actions">
+                <!-- 10 HILLY REGIONS DROPDOWN -->
+                <div class="state-select-wrapper">
+                    <span class="select-label">⛰️ HILLY REGION</span>
+                    <select id="stateSelect" class="state-dropdown" onchange="onStateChange(this.value)"></select>
+                </div>
+
+                <button class="live-sync-btn" onclick="syncLiveAPI()">
+                    📡 Live Satellite Sync
+                </button>
+
+                <button class="simulate-btn" onclick="simulateExtremeCloudburst()">
+                    ⚡ Simulate Cloudburst
+                </button>
+
+                <button id="sirenBtn" class="siren-toggle-btn" onclick="toggleSiren()">
+                    🔊 Test Siren
+                </button>
+            </div>
+        </header>
+
+        <!-- ALERT BANNER -->
+        <section id="alertBanner" class="alert-banner hidden">
+            <div class="alert-icon">⚠</div>
+            <div>
+                <strong id="alertTitle">FLASH FLOOD WARNING</strong>
+                <p id="alertMessage">Elevated threat detected.</p>
+            </div>
+            <button class="alert-close" onclick="dismissAlert()">×</button>
+        </section>
+
+        <!-- TOP METRICS -->
+        <section class="metrics-grid">
+            <div class="metric-card rainfall">
+                <div class="metric-header"><span>RAINFALL (LIVE API)</span><div class="metric-icon">◒</div></div>
+                <div class="metric-value"><span id="rain1h">0.0</span><small>mm/h</small></div>
+                <div class="metric-bottom">Open-Meteo Live Rate</div>
+            </div>
+
+            <div class="metric-card soil">
+                <div class="metric-header"><span>SOIL MOISTURE (CITY AVG)</span><div class="metric-icon">≋</div></div>
+                <div class="metric-value"><span id="soil">--</span><small>%</small></div>
+                <div class="progress"><div id="soilBar" class="progress-fill blue"></div></div>
+                <div class="metric-bottom">City Basin Layer Average</div>
+            </div>
+
+            <div class="metric-card terrain">
+                <div class="metric-header"><span>AVERAGE SLOPE</span><div class="metric-icon">◢</div></div>
+                <div class="metric-value"><span id="slope">--</span><small>°</small></div>
+                <div class="metric-bottom">DEM Terrain Exposure</div>
+            </div>
+
+            <div class="metric-card river">
+                <div class="metric-header"><span>RIVER LEVEL (CITY AVG)</span><div class="metric-icon">≈</div></div>
+                <div class="metric-value"><span id="river">--</span><small>%</small></div>
+                <div class="progress"><div id="riverBar" class="progress-fill cyan"></div></div>
+                <div class="metric-bottom">Live Hydrometric Stage Avg</div>
+            </div>
+        </section>
+
+        <!-- MAIN GRID -->
+        <section class="dashboard-grid">
+
+            <!-- RISK PANEL -->
+            <div class="panel risk-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-label">ML PREDICTION</span>
+                        <h2 id="predictionStateTitle">Hilly Region Threat Assessment</h2>
+                    </div>
+                    <span id="riskBadge" class="risk-badge">CALIBRATING</span>
+                </div>
+
+                <div class="risk-content">
+                    <div class="risk-gauge">
+                        <div class="gauge-ring">
+                            <div>
+                                <strong id="riskScore">--</strong>
+                                <span>/ 100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="risk-info">
+                        <h3 id="riskText">Awaiting data</h3>
+                        <p id="riskDescription">Evaluating multisource environmental signals.</p>
+
+                        <div class="risk-bars">
+                            <div class="factor">
+                                <div><span>Rainfall Intensity</span><strong id="rainFactor">0%</strong></div>
+                                <div class="factor-track"><div id="rainFactorBar"></div></div>
+                            </div>
+                            <div class="factor">
+                                <div><span>Soil Saturation</span><strong id="soilFactor">0%</strong></div>
+                                <div class="factor-track"><div id="soilFactorBar"></div></div>
+                            </div>
+                            <div class="factor">
+                                <div><span>River Runoff Pressure</span><strong id="riverFactor">0%</strong></div>
+                                <div class="factor-track"><div id="riverFactorBar"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history-box">
+                    <span class="history-tag">📜 HISTORICAL DISASTER BENCHMARK:</span>
+                    <p id="stateHistory">Loading region historical records...</p>
+                </div>
+            </div>
+
+            <!-- GEOSPATIAL MAP -->
+            <div class="panel map-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-label">GEOSPATIAL INTELLIGENCE</span>
+                        <h2 id="mapStateTitle">Live Watershed & Safety Map</h2>
+                    </div>
+                    <div class="zone-indicators">
+                        <span class="badge danger-badge">🔴 High Alert Danger Zones</span>
+                        <span class="badge safe-badge">🟢 Safety Zones</span>
+                    </div>
+                </div>
+
+                <div id="map"></div>
+
+                <div class="map-legend">
+                    <div><i class="danger-dot"></i> Danger Zone</div>
+                    <div><i class="safe-dot"></i> Safety Zone</div>
+                    <div><i class="low"></i> Low Risk</div>
+                    <div><i class="moderate"></i> Moderate</div>
+                    <div><i class="high"></i> High</div>
+                    <div><i class="extreme"></i> Extreme</div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- BOTTOM GRID -->
+        <section class="bottom-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <div><span class="panel-label">MULTISOURCE SENSORS</span><h2>Environmental Telemetry</h2></div>
+                    <span class="source-count">LIVE APIS</span>
+                </div>
+                <div class="source-grid">
+                    <div class="source-card"><span class="source-symbol">🌧</span><div><strong>Rainfall (1h)</strong><small>Open-Meteo API</small></div><b id="sourceRain">--</b></div>
+                    <div class="source-card"><span class="source-symbol">⛰</span><div><strong>Elevation</strong><small>DEM Model</small></div><b id="sourceElevation">--</b></div>
+                    <div class="source-card"><span class="source-symbol">💧</span><div><strong>Soil Moisture</strong><small>City Basin Avg</small></div><b id="sourceSoil">--</b></div>
+                    <div class="source-card"><span class="source-symbol">🛰</span><div><strong>Satellite Anomaly</strong><small>SAR Proxy</small></div><b id="sourceSatellite">--</b></div>
+                    <div class="source-card"><span class="source-symbol">🌊</span><div><strong>River Level</strong><small>Live Flood API</small></div><b id="sourceRiver">--</b></div>
+                    <div class="source-card"><span class="source-symbol">🌡</span><div><strong>Surface Temp</strong><small>Surface Station</small></div><b id="sourceTemp">--</b></div>
+                </div>
+            </div>
+
+            <div class="panel prediction-panel">
+                <div class="panel-header">
+                    <div><span class="panel-label">MODEL OUTPUT</span><h2>Probability Distribution</h2></div>
+                    <span class="model-tag">RANDOM FOREST</span>
+                </div>
+                <div class="distribution">
+                    <div class="dist-row"><span>Low</span><div class="dist-track"><div id="lowBar" class="dist-fill low-bg"></div></div><strong id="lowProbability">0%</strong></div>
+                    <div class="dist-row"><span>Moderate</span><div class="dist-track"><div id="moderateBar" class="dist-fill moderate-bg"></div></div><strong id="moderateProbability">0%</strong></div>
+                    <div class="dist-row"><span>High</span><div class="dist-track"><div id="highBar" class="dist-fill high-bg"></div></div><strong id="highProbability">0%</strong></div>
+                    <div class="dist-row"><span>Extreme</span><div class="dist-track"><div id="extremeBar" class="dist-fill extreme-bg"></div></div><strong id="extremeProbability">0%</strong></div>
+                </div>
+                <div class="model-footer">
+                    <div><span>Model</span><strong>Random Forest</strong></div>
+                    <div><span>Inference</span><strong>&lt; 5 ms</strong></div>
+                    <div><span>Status</span><strong class="green">OPTIMAL</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <span>FLASHGUARD • MOUNTAIN FLOOD INTELLIGENCE & SAFETY PROTOCOL</span>
+            <span id="lastUpdated">Last updated: --</span>
+        </footer>
+    </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
